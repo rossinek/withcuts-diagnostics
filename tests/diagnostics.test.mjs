@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { probeMetadata, validDimensions, reportSummary, safeError } from '../site/diagnostics.js';
+import { probeMetadata, validDimensions, safeError } from '../site/diagnostics.js';
 class FakeVideo extends EventTarget {
   videoWidth = 0; videoHeight = 0; duration = NaN; currentTime = 0;
   readyState = 0; networkState = 0; paused = true; ended = false; seeking = false;
@@ -77,12 +77,6 @@ test('invalid dimensions never count as usable', () => {
   for (const width of [0, -1, Infinity, NaN, undefined]) assert.equal(validDimensions({ width, height: 100 }), false);
   assert.equal(validDimensions({ width: 1920, height: 1080 }), true);
 });
-test('summary distinguishes metadata and visibility evidence and states its limits', () => {
-  const summary = reportSummary({ metadata: { original: { validDimensions: false, status: 'timeout' }, updated: { validDimensions: true } }, playback: [
-    { id: 'app-style-canvas', observation: { picture: 'no-picture' } },
-    { id: 'hidden-live-dimensions', observation: { picture: 'moving-picture' } },
-  ] });
-  assert.ok(summary.some(line => line.includes('metadata/crop')));
-  assert.ok(summary.some(line => line.includes('native app export')));
+test('file URLs are redacted from error messages', () => {
   assert.equal(safeError({ message: 'Failed file:///private/name.mov' }).message, 'Failed [source]');
 });

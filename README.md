@@ -4,7 +4,7 @@ A minimal, typographic, dark support page with an amber accent and one task per 
 
 ## Use
 
-Open the page in **Safari on the affected iPhone**. Choose the problem video (or the built-in six-second H.264/AAC sample), wait for two metadata checks, then complete four playback checks. Tap Play, try seeking, tap Continue, then choose what you saw on the next screen. Share the JSON report using the iOS share sheet, or download/copy it.
+Open the page in **Safari on the affected iPhone**. Choose the problem video (or the built-in six-second H.264/AAC sample), wait for two metadata checks, then complete four playback checks. Tap the video or Play to start; the same control pauses and replays it. The result choices stay beside the player. Select an answer, then tap Next test (View report on the last test). Share the JSON report using the iOS share sheet, or download/copy it.
 
 Reports include browser capabilities, events, media state, metadata timing, playback errors, draw counters, user observations, optional device details and notes. The combined result choices record audio explicitly for “Audio only” and “No picture or sound”; other choices leave audio unknown. They exclude file names, source URLs, video/audio data and captured frames. Text explicitly entered in notes is included verbatim. Selecting another video retains up to five previous runs in memory so sample and problem-video results can be shared together. Reloading clears everything.
 

@@ -69,15 +69,3 @@ export function probeMetadata(src, { mode, mount, timeoutMs = 8000, signal, crea
     if (mode === 'updated') video.load();
   });
 }
-export function reportSummary(report) {
-  const original = report.metadata.original;
-  const updated = report.metadata.updated;
-  const observations = Object.fromEntries(report.playback.map(test => [test.id, test.observation?.picture]));
-  const notes = [];
-  if (original && (!original.validDimensions || original.status !== 'resolved')) notes.push('The original metadata check did not return usable video dimensions. This can block preview and export in the app.');
-  if (original && updated?.validDimensions && !original.validDimensions) notes.push('The updated metadata check returned usable dimensions.');
-  if (observations['app-style-canvas'] === 'no-picture' && observations['hidden-live-dimensions'] === 'moving-picture') notes.push('The user saw a picture after switching to player dimensions. This points toward metadata/crop handling.');
-  if (['no-picture', 'frozen-or-distorted'].includes(observations['hidden-live-dimensions']) && observations['visible-live-dimensions'] === 'moving-picture') notes.push('The user saw a picture with the visible source, but not with the hidden source. This points toward the hidden-player canvas path.');
-  notes.push('Browser-only evidence: no test of Capacitor local-file URLs, AVFoundation metadata or native app export. A passing Safari test does not rule out an app-only issue.');
-  return notes;
-}

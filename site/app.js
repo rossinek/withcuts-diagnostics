@@ -1,4 +1,4 @@
-import { APP_VERSION, REPORT_VERSION, TESTS, probeMetadata, mediaSnapshot, releaseVideo, validDimensions, safeError, reportSummary } from './diagnostics.js';
+import { APP_VERSION, REPORT_VERSION, TESTS, probeMetadata, mediaSnapshot, releaseVideo, validDimensions, safeError } from './diagnostics.js';
 
 const $ = id => document.getElementById(id);
 let source;
@@ -20,8 +20,8 @@ function showScreen(name) {
   screen = name;
   document.querySelectorAll('[data-screen]').forEach(section => { section.hidden = section.dataset.screen !== name; });
   $('back-button').hidden = name === 'choose';
-  $('back-button').setAttribute('aria-label', name === 'observation' ? 'Back to video' : 'Choose another video');
-  $('step-label').textContent = ['playback', 'observation'].includes(name) ? `${step + 1} / ${TESTS.length}` : name === 'report' ? 'DONE' : 'VIDEO CHECK';
+  $('back-button').setAttribute('aria-label', 'Choose another video');
+  $('step-label').textContent = name === 'playback' ? `${step + 1} / ${TESTS.length}` : name === 'report' ? 'DONE' : 'VIDEO CHECK';
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
@@ -43,11 +43,8 @@ function updateSnapshot() {
 function report() {
   updateSnapshot();
   const currentRun = run ? structuredClone(run) : null;
-  if (currentRun) currentRun.summary = reportSummary(currentRun);
   return {
     schemaVersion: REPORT_VERSION, appVersion: APP_VERSION, generatedAt: new Date().toISOString(),
-    scope: 'Safari/browser diagnostics; native app export is not tested.',
-    privacy: 'No video, audio, frames, file names or source URLs are included. Device details and notes are entered by the user.',
     environment: environment(),
     device: { model: $('device-model').value.trim(), osVersion: $('os-version').value.trim() },
     notes: $('notes').value.trim(),
@@ -71,7 +68,6 @@ function stopPlayer() {
 function archiveRun() {
   if (!run) return;
   run.finishedAt = new Date().toISOString();
-  run.summary = reportSummary(run);
   history.push(structuredClone(run));
   if (history.length > 5) history.shift();
 }
@@ -123,20 +119,23 @@ function setupTest() {
   stopPlayer();
   const config = TESTS[step];
   const started = performance.now();
-  const record = { id: config.id, mode: config.mode, dimensionSource: config.dimensions, startedAt: new Date().toISOString(), events: [], playAttempts: [], canvas: { drawAttempts: 0, drawCallsSucceeded: 0, skippedNoFrame: 0, skippedInvalidDimensions: 0, errors: [], note: 'Successful draw calls do not prove that a visible picture was produced. See the user observation.' }, observation: null };
+  const record = { id: config.id, mode: config.mode, dimensionSource: config.dimensions, startedAt: new Date().toISOString(), events: [], playAttempts: [], canvas: { drawAttempts: 0, drawCallsSucceeded: 0, skippedNoFrame: 0, skippedInvalidDimensions: 0, errors: [] }, observation: null };
   activeTest = record;
   run.playback.push(record);
   selectedPicture = undefined; selectedAudio = undefined;
   $('test-title').replaceChildren(document.createTextNode(titles[step]));
   const dot = document.createElement('span'); dot.className = 'accent'; dot.textContent = '.';
   $('test-title').append(dot);
-  $('preview-empty').hidden = false;
+  document.querySelectorAll('input[name=result]').forEach(input => { input.checked = false; });
+  $('next-button').disabled = true;
+  $('next-button').textContent = step === TESTS.length - 1 ? 'View report →' : 'Next test →';
+  $('preview-toggle').classList.remove('is-playing');
+  $('preview-toggle').setAttribute('aria-label', 'Play video');
   $('visible-video').hidden = true;
   $('canvas').hidden = true;
   $('source-preview').hidden = true;
-  $('play-button').textContent = 'Play video →';
-  $('play-button').disabled = false;
-  $('toggle-button').disabled = true;
+  $('toggle-button').textContent = '▶ Play';
+  $('toggle-button').setAttribute('aria-label', 'Play video');
   $('seek').value = 0; $('seek').disabled = true;
   $('time-display').textContent = '0:00';
   $('playback-status').textContent = '';
@@ -170,6 +169,13 @@ function setupTest() {
   let lastRaf = 0;
   let lastQuality;
 
+  function updateControls() {
+    const label = el.ended ? 'Replay video' : el.paused ? 'Play video' : 'Pause video';
+    $('toggle-button').textContent = el.ended ? '↻ Replay' : el.paused ? '▶ Play' : 'Ⅱ Pause';
+    $('toggle-button').setAttribute('aria-label', label);
+    $('preview-toggle').setAttribute('aria-label', label);
+    $('preview-toggle').classList.toggle('is-playing', !el.paused);
+  }
   function logEvent(event) {
     if (disposed) return;
     const elapsed = Math.round(performance.now() - started);
@@ -182,8 +188,7 @@ function setupTest() {
     $('time-display').textContent = clock(el.currentTime);
     $('seek').disabled = !Number.isFinite(duration) || duration <= 0;
     if (Number.isFinite(duration) && duration > 0) $('seek').value = Math.round(el.currentTime / duration * 1000);
-    $('toggle-button').textContent = el.paused ? '▷' : 'Ⅱ';
-    $('toggle-button').setAttribute('aria-label', el.paused ? 'Play video' : 'Pause video');
+    updateControls();
     if (event.type === 'playing') {
       clearTimeout(timeout);
       $('playback-status').textContent = config.dimensions === 'original' && !run.metadata.original?.validDimensions
@@ -241,12 +246,11 @@ function setupTest() {
   // Match the app player's initial fragment in the canvas cases.
   el.src = config.mode === 'direct' ? source.url : `${source.url}#t=0.001`;
   function startPlayback() {
-    if (!el.paused) { el.pause(); return; }
+    if (!el.paused) { clearTimeout(timeout); el.pause(); updateControls(); $('playback-status').textContent = ''; return; }
+    if (el.ended) el.currentTime = 0;
     hasStarted = true;
     record.startedByUser = true;
-    $('play-button').textContent = 'Continue →';
-    $('toggle-button').disabled = false;
-    $('preview-empty').hidden = true;
+
     if (config.mode === 'direct') el.hidden = false;
     else canvas.hidden = false;
     const attempt = { elapsedMs: Math.round(performance.now() - started), status: 'pending' };
@@ -270,6 +274,8 @@ function setupTest() {
         attempt.status = 'rejected'; attempt.error = safeError(error);
         if (disposed) return;
         clearTimeout(timeout);
+        updateControls();
+        if (error.name === 'AbortError' && el.paused) return;
         $('playback-status').textContent = `Couldn’t play. ${error.name || 'Error'}.`;
         updateReport();
       });
@@ -278,12 +284,7 @@ function setupTest() {
       $('playback-status').textContent = 'Couldn’t play.';
     }
   }
-  $('play-button').onclick = () => {
-    if (!hasStarted) { startPlayback(); return; }
-    el.pause();
-    updateSnapshot();
-    showScreen('observation');
-  };
+  $('preview-toggle').onclick = startPlayback;
   $('toggle-button').onclick = startPlayback;
   $('seek').oninput = () => {
     if (!Number.isFinite(el.duration) || el.duration <= 0) return;
@@ -305,7 +306,7 @@ function setupTest() {
       el.replaceWith(placeholder);
     }
     releaseVideo(el);
-    $('play-button').onclick = null; $('toggle-button').onclick = null; $('seek').oninput = null;
+    $('preview-toggle').onclick = null; $('toggle-button').onclick = null; $('seek').oninput = null;
   };
   updateReport();
 }
@@ -332,14 +333,16 @@ $('file-input').addEventListener('change', () => {
 });
 $('sample-button').addEventListener('click', () => selectSource({ kind: 'sample', url: new URL('./assets/sample.mp4', location.href).href, display: 'Built-in sample · 6 seconds · moving pattern + quiet tone', report: { kind: 'sample', id: 'h264-aac-640x360-30fps-v1', mimeType: 'video/mp4' } }));
 $('skip-button').addEventListener('click', () => finishStep(true));
-document.querySelectorAll('[data-result]').forEach(button => button.addEventListener('click', () => {
-  const value = button.dataset.result;
+document.querySelectorAll('input[name=result]').forEach(input => input.addEventListener('change', () => {
+  const value = input.value;
   selectedPicture = ['audio-only', 'nothing'].includes(value) ? 'no-picture' : value;
   selectedAudio = value === 'audio-only' ? 'yes' : value === 'nothing' ? 'no' : undefined;
-  finishStep(false);
+  if (activeTest) activeTest.observation = { picture: selectedPicture, audio: selectedAudio || null, skipped: false };
+  $('next-button').disabled = false;
+  updateReport();
 }));
+$('next-button').addEventListener('click', () => { if (selectedPicture) finishStep(false); });
 $('back-button').addEventListener('click', () => {
-  if (screen === 'observation' && video) { showScreen('playback'); return; }
   ++runToken;
   probeController?.abort();
   stopPlayer();
