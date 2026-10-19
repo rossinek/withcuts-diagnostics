@@ -14,6 +14,17 @@ let selectedPicture;
 let selectedAudio;
 let isComplete = false;
 let sharing = false;
+let screen = 'choose';
+const titles = ['Regular playback', 'App-style preview', 'Live dimensions', 'Visible source'];
+function showScreen(name) {
+  screen = name;
+  document.querySelectorAll('[data-screen]').forEach(section => { section.hidden = section.dataset.screen !== name; });
+  $('back-button').hidden = name === 'choose';
+  $('back-button').setAttribute('aria-label', name === 'observation' ? 'Back to video' : 'Choose another video');
+  $('step-label').textContent = ['playback', 'observation'].includes(name) ? `${step + 1} / ${TESTS.length}` : name === 'report' ? 'DONE' : 'VIDEO CHECK';
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
+
 const eventsToCapture = ['loadstart', 'loadedmetadata', 'loadeddata', 'resize', 'canplay', 'canplaythrough', 'play', 'playing', 'pause', 'seeking', 'seeked', 'waiting', 'stalled', 'suspend', 'ended', 'error', 'abort', 'emptied', 'timeupdate'];
 const clock = seconds => { const s = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0; return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 const bytes = size => `${(size / 1024 / 1024).toFixed(1)} MB`;
@@ -48,7 +59,7 @@ function reportText() { return JSON.stringify(report(), null, 2); }
 function updateReport() {
   if (!run) return;
   $('report-preview').textContent = reportText();
-  $('report-state').textContent = isComplete ? 'REPORT READY' : 'PARTIAL REPORT';
+  $('report-count').textContent = `${new Set(run.playback.filter(test => test.finishedAt).map(test => test.id)).size} / ${TESTS.length} CHECKS`;
 }
 function stopPlayer() {
   updateSnapshot();
@@ -68,7 +79,7 @@ function setBusy(busy) {
   document.body.dataset.running = String(busy);
   $('file-input').disabled = busy;
   $('sample-button').disabled = busy;
-  $('repeat-button').disabled = busy;
+
 }
 async function selectSource(nextSource) {
   ++runToken;
@@ -87,34 +98,24 @@ async function beginRun() {
   isComplete = false;
   step = 0;
   run = { id: crypto.randomUUID(), startedAt: new Date().toISOString(), source: source.report, metadata: {}, playback: [], interruptions: [] };
-  $('checks-section').hidden = false;
-  $('report-section').hidden = false;
-  $('player-section').hidden = true;
-  $('checks-complete').hidden = true;
-  $('metadata-progress').hidden = false;
-  $('metadata-progress').textContent = 'Reading video information. This can take up to 16 seconds…';
-  $('metadata-results').replaceChildren();
-  $('test-count').textContent = 'PREPARING';
-  $('file-summary').textContent = source.display;
+  $('loading-status').textContent = '';
+  $('file-error').hidden = true;
   setBusy(true);
-  $('checks-section').scrollIntoView({ block: 'start', behavior: 'instant' });
+  showScreen('loading');
   updateReport();
   try {
     for (const mode of ['original', 'updated']) {
-      const result = await probeMetadata(source.url, { mode, signal: probeController.signal, mount: $('metadata-progress') });
+      $('metadata-count').textContent = mode === 'original' ? '01 / 02' : '02 / 02';
+      const result = await probeMetadata(source.url, { mode, signal: probeController.signal, mount: $('probe-mount') });
       if (token !== runToken) return;
       run.metadata[mode] = result;
-      const row = document.createElement('div'); row.className = 'result-row';
-      const title = document.createElement('span'); title.textContent = mode === 'original' ? 'Original metadata check' : 'Updated metadata check';
-      const value = document.createElement('span'); value.textContent = `${result.validDimensions ? `${result.snapshot.width} × ${result.snapshot.height}` : result.status === 'resolved' ? 'Invalid dimensions' : result.status} · ${result.elapsedMs} ms`;
-      row.append(title, value); $('metadata-results').append(row);
       updateReport();
     }
-    $('metadata-progress').hidden = true;
     setupTest();
   } catch (error) {
     run.setupError = safeError(error);
-    $('metadata-progress').textContent = 'The information check could not finish. You can still share the report below.';
+    showScreen('report');
+    $('share-status').textContent = 'The check stopped. You can share this partial report.';
     updateReport();
   } finally { if (token === runToken) setBusy(false); }
 }
@@ -126,23 +127,20 @@ function setupTest() {
   activeTest = record;
   run.playback.push(record);
   selectedPicture = undefined; selectedAudio = undefined;
-  document.querySelectorAll('input[name=picture], input[name=audio]').forEach(input => { input.checked = false; });
-  $('next-button').disabled = true;
-  $('next-button').textContent = step === TESTS.length - 1 ? 'Finish checks →' : 'Next check →';
-  $('test-count').textContent = `${step + 1} OF ${TESTS.length}`;
-  $('progress-fill').style.width = `${(step + 1) / TESTS.length * 100}%`;
-  $('test-title').textContent = config.title;
-  $('test-description').textContent = config.description;
-  $('player-section').hidden = false;
+  $('test-title').replaceChildren(document.createTextNode(titles[step]));
+  const dot = document.createElement('span'); dot.className = 'accent'; dot.textContent = '.';
+  $('test-title').append(dot);
   $('preview-empty').hidden = false;
   $('visible-video').hidden = true;
   $('canvas').hidden = true;
   $('source-preview').hidden = true;
-  $('play-button').textContent = 'Play test';
+  $('play-button').textContent = 'Play video →';
   $('play-button').disabled = false;
+  $('toggle-button').disabled = true;
   $('seek').value = 0; $('seek').disabled = true;
-  $('time-display').textContent = '0:00 / 0:00';
-  $('playback-status').textContent = 'Press play, then try moving the slider.';
+  $('time-display').textContent = '0:00';
+  $('playback-status').textContent = '';
+  showScreen('playback');
 
   const el = document.createElement('video');
   el.playsInline = true; el.preload = 'metadata'; el.muted = false;
@@ -181,22 +179,23 @@ function setupTest() {
       else record.eventsTruncated = true;
     }
     const duration = el.duration;
-    $('time-display').textContent = `${clock(el.currentTime)} / ${clock(duration)}`;
+    $('time-display').textContent = clock(el.currentTime);
     $('seek').disabled = !Number.isFinite(duration) || duration <= 0;
     if (Number.isFinite(duration) && duration > 0) $('seek').value = Math.round(el.currentTime / duration * 1000);
-    $('play-button').textContent = el.paused ? (hasStarted ? 'Play' : 'Play test') : 'Pause';
+    $('toggle-button').textContent = el.paused ? '▷' : 'Ⅱ';
+    $('toggle-button').setAttribute('aria-label', el.paused ? 'Play video' : 'Pause video');
     if (event.type === 'playing') {
       clearTimeout(timeout);
       $('playback-status').textContent = config.dimensions === 'original' && !run.metadata.original?.validDimensions
-        ? 'Playback started, but the original size check returned no usable picture size.'
-        : 'Playback started. Check the picture and try the slider.';
+        ? 'Video dimensions unavailable.'
+        : '';
     }
-    if (event.type === 'ended') $('playback-status').textContent = 'Playback finished. You can replay it or continue.';
+    if (event.type === 'ended') $('playback-status').textContent = 'Finished.';
     if (event.type === 'error') {
       clearTimeout(timeout);
-      $('playback-status').textContent = `The browser could not load this video (media error ${el.error?.code || 'unknown'}). You can continue or share the report.`;
+      $('playback-status').textContent = `Couldn’t load video. Error ${el.error?.code || 'unknown'}.`;
     }
-    if (event.type === 'waiting' && hasStarted) $('playback-status').textContent = 'Waiting for video data… You can continue if it stays here.';
+    if (event.type === 'waiting' && hasStarted) $('playback-status').textContent = 'Waiting for video…';
   }
   eventsToCapture.forEach(name => el.addEventListener(name, logEvent));
   // Capture presentation callbacks without using them as proof of a visible image.
@@ -235,7 +234,7 @@ function setupTest() {
       record.canvas.drawCallsSucceeded++;
     } catch (error) {
       if (record.canvas.errors.length < 5) record.canvas.errors.push(safeError(error));
-      $('playback-status').textContent = 'The browser could not draw the preview. This has been added to the report.';
+      $('playback-status').textContent = 'Couldn’t draw the preview.';
     }
   }
   raf = requestAnimationFrame(draw);
@@ -245,17 +244,19 @@ function setupTest() {
     if (!el.paused) { el.pause(); return; }
     hasStarted = true;
     record.startedByUser = true;
+    $('play-button').textContent = 'Continue →';
+    $('toggle-button').disabled = false;
     $('preview-empty').hidden = true;
     if (config.mode === 'direct') el.hidden = false;
     else canvas.hidden = false;
     const attempt = { elapsedMs: Math.round(performance.now() - started), status: 'pending' };
     record.playAttempts.push(attempt);
-    $('playback-status').textContent = 'Starting playback…';
+    $('playback-status').textContent = 'Starting…';
     clearTimeout(timeout);
     timeout = setTimeout(() => {
       if (disposed) return;
       attempt.exceededTimeout = true;
-      $('playback-status').textContent = 'Playback has not started after 10 seconds. Please record what you see or skip this check.';
+      $('playback-status').textContent = 'Playback timed out.';
       updateReport();
     }, 10000);
     // Invoke play synchronously from the button gesture for iOS media policies.
@@ -269,16 +270,21 @@ function setupTest() {
         attempt.status = 'rejected'; attempt.error = safeError(error);
         if (disposed) return;
         clearTimeout(timeout);
-        $('playback-status').textContent = `Playback could not start (${error.name || 'error'}). You can continue and share the report.`;
+        $('playback-status').textContent = `Couldn’t play. ${error.name || 'Error'}.`;
         updateReport();
       });
     } catch (error) {
       clearTimeout(timeout); attempt.status = 'rejected'; attempt.error = safeError(error);
-      $('playback-status').textContent = 'Playback could not start. Please continue and share the report.';
+      $('playback-status').textContent = 'Couldn’t play.';
     }
   }
-  $('play-button').onclick = startPlayback;
-  $('restart-button').onclick = () => { try { el.currentTime = 0; if (el.paused) startPlayback(); } catch (error) { record.seekError = safeError(error); } };
+  $('play-button').onclick = () => {
+    if (!hasStarted) { startPlayback(); return; }
+    el.pause();
+    updateSnapshot();
+    showScreen('observation');
+  };
+  $('toggle-button').onclick = startPlayback;
   $('seek').oninput = () => {
     if (!Number.isFinite(el.duration) || el.duration <= 0) return;
     try { el.currentTime = Number($('seek').value) / 1000 * el.duration; record.userSeekCount = (record.userSeekCount || 0) + 1; }
@@ -299,7 +305,7 @@ function setupTest() {
       el.replaceWith(placeholder);
     }
     releaseVideo(el);
-    $('play-button').onclick = null; $('restart-button').onclick = null; $('seek').oninput = null;
+    $('play-button').onclick = null; $('toggle-button').onclick = null; $('seek').oninput = null;
   };
   updateReport();
 }
@@ -313,35 +319,33 @@ function finishStep(skipped) {
   else {
     isComplete = true;
     run.finishedAt = new Date().toISOString();
-    $('player-section').hidden = true;
-    $('checks-complete').hidden = false;
-    $('test-count').textContent = 'COMPLETE';
     updateReport();
-    $('report-section').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
+    showScreen('report');
   }
 }
 $('file-input').addEventListener('change', () => {
   const file = $('file-input').files?.[0];
   if (!file) return;
-  if (!file.size) { $('file-summary').textContent = 'This file is empty. Please choose another video.'; return; }
+  if (!file.size) { $('file-error').hidden = false; $('file-error').textContent = 'This file is empty.'; return; }
   selectSource({ kind: 'local-file', url: URL.createObjectURL(file), display: `${file.name} · ${bytes(file.size)} · kept on this device`, report: { kind: 'local-file', bytes: file.size, mimeType: file.type || 'unknown' } });
   $('file-input').value = '';
 });
 $('sample-button').addEventListener('click', () => selectSource({ kind: 'sample', url: new URL('./assets/sample.mp4', location.href).href, display: 'Built-in sample · 6 seconds · moving pattern + quiet tone', report: { kind: 'sample', id: 'h264-aac-640x360-30fps-v1', mimeType: 'video/mp4' } }));
-$('repeat-button').addEventListener('click', () => { archiveRun(); beginRun(); });
-$('next-button').addEventListener('click', () => finishStep(false));
 $('skip-button').addEventListener('click', () => finishStep(true));
-document.querySelectorAll('input[name=picture]').forEach(input => input.addEventListener('change', () => {
-  selectedPicture = input.value;
-  $('next-button').disabled = false;
-  if (activeTest) activeTest.observation = { picture: selectedPicture, audio: selectedAudio || null, skipped: false };
-  updateReport();
+document.querySelectorAll('[data-result]').forEach(button => button.addEventListener('click', () => {
+  const value = button.dataset.result;
+  selectedPicture = ['audio-only', 'nothing'].includes(value) ? 'no-picture' : value;
+  selectedAudio = value === 'audio-only' ? 'yes' : value === 'nothing' ? 'no' : undefined;
+  finishStep(false);
 }));
-document.querySelectorAll('input[name=audio]').forEach(input => input.addEventListener('change', () => {
-  selectedAudio = input.value;
-  if (activeTest) activeTest.observation = { picture: selectedPicture || null, audio: selectedAudio, skipped: false };
-  updateReport();
-}));
+$('back-button').addEventListener('click', () => {
+  if (screen === 'observation' && video) { showScreen('playback'); return; }
+  ++runToken;
+  probeController?.abort();
+  stopPlayer();
+  setBusy(false);
+  showScreen('choose');
+});
 ['notes', 'device-model', 'os-version'].forEach(id => $(id).addEventListener('input', updateReport));
 $('report-details').addEventListener('toggle', () => { if ($('report-details').open) updateReport(); });
 function downloadReport() {
@@ -350,7 +354,7 @@ function downloadReport() {
   const a = document.createElement('a'); a.href = url; a.download = `withsubtitles-video-check-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60000);
-  $('share-status').textContent = 'Report download requested. Attach the JSON file to your support reply.';
+  $('share-status').textContent = 'Report downloaded.';
 }
 $('download-button').addEventListener('click', downloadReport);
 $('share-button').addEventListener('click', async () => {
@@ -362,19 +366,19 @@ $('share-button').addEventListener('click', async () => {
     if (!navigator.share) { downloadReport(); return; }
     if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: 'WithSubtitles video check' });
     else await navigator.share({ title: 'WithSubtitles video check', text });
-    $('share-status').textContent = 'The report was handed to your chosen app.';
+    $('share-status').textContent = 'Report shared.';
   } catch (error) {
-    $('share-status').textContent = error.name === 'AbortError' ? 'Sharing cancelled. Your report is still here.' : 'Sharing is unavailable here. Please use Download or Copy.';
+    $('share-status').textContent = error.name === 'AbortError' ? 'Sharing cancelled.' : 'Use Download or Copy instead.';
   } finally { sharing = false; $('share-button').disabled = false; }
 });
 $('copy-button').addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(reportText());
-    $('share-status').textContent = 'Report copied. Paste it into your support reply.';
+    $('share-status').textContent = 'Report copied.';
   } catch {
     updateReport(); $('report-details').open = true;
     const selection = window.getSelection(); const range = document.createRange(); range.selectNodeContents($('report-preview')); selection.removeAllRanges(); selection.addRange(range);
-    $('share-status').textContent = 'Automatic copy is unavailable. Select and copy the report below, or use Download.';
+    $('share-status').textContent = 'Select the report to copy, or use Download.';
   }
 });
 document.addEventListener('visibilitychange', () => {
@@ -390,10 +394,10 @@ window.addEventListener('pagehide', () => {
   setBusy(false);
 });
 window.addEventListener('pageshow', event => {
-  if (!event.persisted || !run || isComplete || video) return;
+  if (!event.persisted || !run || isComplete || video || screen === 'choose') return;
   if (run.metadata.original && run.metadata.updated) {
     setupTest();
-    $('playback-status').textContent = 'Welcome back. Please replay this check after returning to the page.';
+    $('playback-status').textContent = 'Please replay this check.';
   } else {
     archiveRun();
     beginRun();

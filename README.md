@@ -1,12 +1,12 @@
 # WithSubtitles video diagnostics
 
-A minimal, dark, mobile-first support page. Videos are selected and tested locally in the browser. No backend, dependencies, uploads, analytics or external fonts.
+A minimal, typographic, dark support page with an amber accent and one task per screen. Videos are selected and tested locally in the browser. No backend, dependencies, uploads, analytics or external fonts.
 
 ## Use
 
-Open the page in **Safari on the affected iPhone**. Choose the problem video (or the built-in six-second H.264/AAC sample), wait for two metadata checks, then complete four playback checks. Tap Play, try seeking, and record picture/audio observations. Share the JSON report using the iOS share sheet, or download/copy it.
+Open the page in **Safari on the affected iPhone**. Choose the problem video (or the built-in six-second H.264/AAC sample), wait for two metadata checks, then complete four playback checks. Tap Play, try seeking, tap Continue, then choose what you saw on the next screen. Share the JSON report using the iOS share sheet, or download/copy it.
 
-Reports include browser capabilities, events, media state, metadata timing, playback errors, draw counters, user observations, optional device details and notes. They exclude file names, source URLs, video/audio data and captured frames. The filename is displayed locally only. Text explicitly entered in notes is included verbatim. Selecting another video retains up to five previous runs in memory so sample and problem-video results can be shared together. Reloading clears everything.
+Reports include browser capabilities, events, media state, metadata timing, playback errors, draw counters, user observations, optional device details and notes. The combined result choices record audio explicitly for “Audio only” and “No picture or sound”; other choices leave audio unknown. They exclude file names, source URLs, video/audio data and captured frames. Text explicitly entered in notes is included verbatim. Selecting another video retains up to five previous runs in memory so sample and problem-video results can be shared together. Reloading clears everything.
 
 The browser may transform a video selected from Photos; use an original saved in Files when an exact file comparison is needed. File size and MIME type are recorded, but these do not prove byte-for-byte identity.
 
@@ -47,4 +47,4 @@ Typical URL: `https://<owner>.github.io/withcuts-diagnostics/`.
 
 The static hosting provider receives ordinary page/asset requests. Selecting a video creates a browser-local object URL; no video is uploaded. A Content Security Policy forbids fetch/XHR/WebSocket connections and external scripts. Sharing is explicitly initiated by the user; its destination is chosen in the system share sheet. Reports are not automatically sent anywhere or stored in the browser.
 
-JSON file sharing falls back to sharing text if file sharing is unsupported. Download and Copy remain available. Clipboard failures show selectable report text. Technical results and partial reports are available even when a test times out or playback fails.
+JSON file sharing falls back to sharing text if file sharing is unsupported. Download and Copy remain available. Clipboard failures show selectable report text. Tests can be skipped if playback fails; the final report includes partial results. Technical details are under View report.
