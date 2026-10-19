@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#111313">
+  <meta name="description" content="A private, on-device video check for WithSubtitles support.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Video check · WithSubtitles</title>
+  <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <main>
+    <header class="brand"><span class="brand-mark" aria-hidden="true">w<span>_</span></span><span>WithSubtitles <span class="brand-divider">/</span> <span class="muted">Support</span></span><span class="local-badge"><span></span> On-device test</span></header>
+    <section class="intro">
+      <p class="eyebrow">VIDEO DIAGNOSTICS</p>
+      <h1>Let’s check<br>your video.</h1>
+      <p class="lead">A few quick checks to help us understand what’s happening. Your video stays on your device.</p>
+      <p class="device-note">For the most useful results, open this page in <strong>Safari on the iPhone where the issue happens.</strong></p>
+    </section>
+    <noscript><p class="notice">Please enable JavaScript in Safari to run these checks.</p></noscript>
+    <section class="panel source-panel" aria-labelledby="source-heading">
+      <div class="section-heading"><h2 id="source-heading"><span class="step-number">01</span> Choose a video</h2><span class="tag">LOCAL ONLY</span></div>
+      <p class="muted small">Choose the same video that has no picture in the app.</p>
+      <div class="source-actions"><label class="button primary file-button">Choose video<input id="file-input" type="file" accept="video/*,.mov,.mp4,.m4v"></label><button id="sample-button" class="button secondary" type="button">Try a sample instead <span aria-hidden="true">↗</span></button></div>
+      <p id="file-summary" class="file-summary" aria-live="polite">Nothing selected yet. No upload required.</p>
+      <details class="device-details"><summary>Add device details <span class="muted">(optional)</span></summary><div class="field-grid"><label>iPhone model<input id="device-model" maxlength="80" placeholder="e.g. iPhone 16 Pro" autocomplete="off"></label><label>iOS version<input id="os-version" maxlength="80" placeholder="Settings → General → About" autocomplete="off"></label></div></details>
+    </section>
+    <section id="checks-section" class="panel" aria-labelledby="checks-heading" hidden>
+      <div class="section-heading"><h2 id="checks-heading"><span class="step-number">02</span> Check the picture</h2><span id="test-count" class="tag">PREPARING</span></div>
+      <div id="metadata-progress" class="notice" role="status">Reading video information. This can take up to 16 seconds…</div>
+      <div id="player-section" hidden>
+        <div class="progress-track" aria-hidden="true"><span id="progress-fill"></span></div>
+        <h3 id="test-title"></h3><p id="test-description" class="muted small"></p>
+        <div id="preview" class="preview"><div id="preview-empty" class="preview-empty"><span aria-hidden="true">▷</span><span>Tap Play test to begin</span></div><video id="visible-video" playsinline preload="metadata" hidden></video><canvas id="canvas" width="640" height="360" hidden></canvas></div>
+        <div id="source-preview" class="source-preview" hidden><span class="muted small">Visible source</span></div>
+        <div class="playback-controls"><button id="play-button" class="button primary" type="button">Play test</button><button id="restart-button" class="button secondary" type="button">Replay</button><span id="time-display" class="time-display">0:00 / 0:00</span></div>
+        <label class="seek-label"><span class="sr-only">Video position</span><input id="seek" type="range" min="0" max="1000" value="0" step="1" disabled></label>
+        <p id="playback-status" class="small muted" role="status">Press play, then try moving the slider.</p>
+        <fieldset id="observation-fieldset"><legend>What do you see?</legend><div class="observations">
+          <label><input type="radio" name="picture" value="moving-picture"><span>Moving picture</span></label>
+          <label><input type="radio" name="picture" value="no-picture"><span>No picture</span></label>
+          <label><input type="radio" name="picture" value="frozen-or-distorted"><span>Frozen / distorted</span></label>
+          <label><input type="radio" name="picture" value="cannot-play"><span>Won’t play</span></label>
+        </div></fieldset>
+        <fieldset class="audio-field"><legend>Can you hear the audio?</legend><div class="audio-options"><label><input type="radio" name="audio" value="yes"> Yes</label><label><input type="radio" name="audio" value="no"> No</label><label><input type="radio" name="audio" value="unsure"> Not sure / silent clip</label></div></fieldset>
+        <div class="next-actions"><button id="next-button" class="button primary" type="button" disabled>Next check <span aria-hidden="true">→</span></button><button id="skip-button" class="text-button" type="button">Skip this check</button></div>
+      </div>
+      <div id="checks-complete" class="complete" hidden><span class="complete-icon" aria-hidden="true">✓</span><h3>Thanks. That helps.</h3><p class="muted">Your results are ready. Share the report below with the person helping you.</p><button id="repeat-button" class="text-button" type="button">Repeat checks for this video</button></div>
+      <details id="technical-details" class="technical-details"><summary>Technical results</summary><div id="metadata-results"></div><p class="small muted">Safari results help narrow down the issue. This page does not test the app’s native video export.</p></details>
+    </section>
+    <section id="report-section" class="panel" aria-labelledby="report-heading" hidden>
+      <div class="section-heading"><h2 id="report-heading"><span class="step-number">03</span> Share your results</h2><span id="report-state" class="tag">PARTIAL REPORT</span></div>
+      <p class="small muted">The report includes test results, browser information and any device details you add. It contains no video, audio, frames or filename.</p>
+      <label class="notes-label">Anything else we should know? <span class="muted">(optional)</span><textarea id="notes" rows="3" maxlength="2000" placeholder="For example: audio works in the app, but the preview stays black."></textarea></label>
+      <div class="report-actions"><button id="share-button" class="button primary" type="button">Share report <span aria-hidden="true">↗</span></button><button id="download-button" class="button secondary" type="button">Download</button><button id="copy-button" class="text-button" type="button">Copy</button></div>
+      <p id="share-status" class="small muted" role="status">Nothing is sent until you choose to share it.</p>
+      <details id="report-details"><summary>Review report</summary><pre id="report-preview" tabindex="0"></pre></details>
+    </section>
+    <footer><span>Made to help, not to collect.</span><span>No uploads · No analytics</span></footer>
+  </main>
+</body>
+</html>
