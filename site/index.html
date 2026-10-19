@@ -17,7 +17,7 @@
     <header><button id="back-button" class="back-button" type="button" aria-label="Choose another video" hidden>←</button><span class="wordmark">WithSubtitles<span class="brand-dot">.</span></span><span id="step-label" class="step-label">VIDEO CHECK</span></header>
     <noscript><p>Enable JavaScript to check your video.</p></noscript>
     <section data-screen="choose" aria-labelledby="choose-heading">
-      <div class="screen-content intro"><h1 id="choose-heading">Video<br><span class="accent">check.</span></h1><p class="privacy">Play your video four ways on your device, choose what you see, then share the report.</p><label class="primary file-button">Choose video <span aria-hidden="true">↗</span><input id="file-input" type="file" accept="video/*,.mov,.mp4,.m4v"></label><button id="sample-button" class="text-button" type="button">Use a sample</button><p id="file-error" role="status" hidden></p></div>
+      <div class="screen-content intro"><h1 id="choose-heading">Video<br><span class="accent">check.</span></h1><p class="privacy">Play your video four ways on your device, check the picture and sound, then share the report.</p><label class="primary file-button">Choose video <span aria-hidden="true">↗</span><input id="file-input" type="file" accept="video/*,.mov,.mp4,.m4v"></label><button id="sample-button" class="text-button" type="button">Use a sample</button><p id="file-error" role="status" hidden></p></div>
     </section>
     <section data-screen="loading" aria-labelledby="loading-heading" hidden>
       <div class="screen-content"><p id="metadata-count" class="eyebrow">01 / 02</p><h1 id="loading-heading">Reading<br>video<span class="accent">.</span></h1><div class="loading-line" aria-hidden="true"></div><div id="probe-mount"></div><p id="loading-status" class="status" role="status"></p></div>
@@ -37,13 +37,19 @@
           <span id="time-display">0:00</span>
         </div>
         <p id="playback-status" class="status" role="status"></p>
-        <fieldset class="answers"><legend>What do you see?</legend>
-          <label><input type="radio" name="result" value="moving-picture"><span>Moving picture</span></label>
-          <label><input type="radio" name="result" value="audio-only"><span>Audio only</span></label>
-          <label><input type="radio" name="result" value="nothing"><span>No picture or sound</span></label>
-          <label><input type="radio" name="result" value="frozen-or-distorted"><span>Frozen / distorted</span></label>
-          <label><input type="radio" name="result" value="cannot-play"><span>Wouldn’t play</span></label>
-        </fieldset>
+        <div class="result-groups">
+          <fieldset class="answers"><legend>Video</legend>
+            <label><input type="radio" name="picture-result" value="plays-correctly"><span>Video plays correctly</span></label>
+            <label><input type="radio" name="picture-result" value="no-picture"><span>No picture</span></label>
+            <label><input type="radio" name="picture-result" value="frozen-or-distorted"><span>Frozen or distorted</span></label>
+          </fieldset>
+          <fieldset class="answers"><legend>Audio</legend>
+            <label><input type="radio" name="audio-result" value="plays-correctly"><span>Audio plays correctly</span></label>
+            <label><input type="radio" name="audio-result" value="no-sound"><span>No sound</span></label>
+            <label><input type="radio" name="audio-result" value="distorted-or-cutting-out"><span>Distorted or cutting out</span></label>
+            <label><input type="radio" name="audio-result" value="original-is-silent"><span>Original video is silent</span></label>
+          </fieldset>
+        </div>
         <div class="test-actions"><button id="next-button" class="primary" type="button" disabled>Next test <span aria-hidden="true">→</span></button><button id="skip-button" class="text-button" type="button">Skip</button></div>
       </div>
     </section>

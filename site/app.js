@@ -126,7 +126,7 @@ function setupTest() {
   $('test-title').replaceChildren(document.createTextNode(titles[step]));
   const dot = document.createElement('span'); dot.className = 'accent'; dot.textContent = '.';
   $('test-title').append(dot);
-  document.querySelectorAll('input[name=result]').forEach(input => { input.checked = false; });
+  document.querySelectorAll('input[name=picture-result], input[name=audio-result]').forEach(input => { input.checked = false; });
   $('next-button').disabled = true;
   $('next-button').textContent = step === TESTS.length - 1 ? 'View report →' : 'Next test →';
   $('preview-toggle').classList.remove('is-playing');
@@ -333,15 +333,14 @@ $('file-input').addEventListener('change', () => {
 });
 $('sample-button').addEventListener('click', () => selectSource({ kind: 'sample', url: new URL('./assets/sample.mp4', location.href).href, display: 'Built-in sample · 6 seconds · moving pattern + quiet tone', report: { kind: 'sample', id: 'h264-aac-640x360-30fps-v1', mimeType: 'video/mp4' } }));
 $('skip-button').addEventListener('click', () => finishStep(true));
-document.querySelectorAll('input[name=result]').forEach(input => input.addEventListener('change', () => {
-  const value = input.value;
-  selectedPicture = ['audio-only', 'nothing'].includes(value) ? 'no-picture' : value;
-  selectedAudio = value === 'audio-only' ? 'yes' : value === 'nothing' ? 'no' : undefined;
-  if (activeTest) activeTest.observation = { picture: selectedPicture, audio: selectedAudio || null, skipped: false };
-  $('next-button').disabled = false;
+document.querySelectorAll('input[name=picture-result], input[name=audio-result]').forEach(input => input.addEventListener('change', () => {
+  if (input.name === 'picture-result') selectedPicture = input.value;
+  else selectedAudio = input.value;
+  if (activeTest) activeTest.observation = { picture: selectedPicture || null, audio: selectedAudio || null, skipped: false };
+  $('next-button').disabled = !(selectedPicture && selectedAudio);
   updateReport();
 }));
-$('next-button').addEventListener('click', () => { if (selectedPicture) finishStep(false); });
+$('next-button').addEventListener('click', () => { if (selectedPicture && selectedAudio) finishStep(false); });
 $('back-button').addEventListener('click', () => {
   ++runToken;
   probeController?.abort();

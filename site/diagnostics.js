@@ -1,5 +1,5 @@
-export const REPORT_VERSION = 1;
-export const APP_VERSION = '1.0.0';
+export const REPORT_VERSION = 2;
+export const APP_VERSION = '1.1.0';
 export const TESTS = [
   { id: 'direct-video', title: 'The regular player', description: 'First, let’s try a regular video player. Press play and check whether the picture moves.', mode: 'direct', dimensions: 'player' },
   { id: 'app-style-canvas', title: 'The app-style preview', description: 'This uses a hidden player and the original metadata check, like the app’s preview.', mode: 'hidden', dimensions: 'original' },
